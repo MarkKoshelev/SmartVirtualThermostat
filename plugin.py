@@ -69,7 +69,7 @@ class BasePlugin:
     def __init__(self):
 
         self.debug = False
-        self.calculate_period = 30  # Time in minutes between two calculations (cycle)
+        self.calculate_period = 5  # Time in minutes between two calculations (cycle)
         self.minheatpower = 0  # if heating is needed, minimum heat power (in % of calculation period)
         self.deltamax = 0.2  # allowed temp excess over setpoint temperature
         self.pauseondelay = 2  # time between pause sensor actuation and actual pause
@@ -252,7 +252,10 @@ class BasePlugin:
             return
 
         if Devices[1].sValue == "0":  # Thermostat is off
-            if self.forced or self.heat:  # thermostat setting was just changed so we kill the heating
+            #mark: repeate off commnd to off switch if commnd lost
+            #if self.forced or self.heat:  # thermostat setting was just changed so we kill the heating
+            if self.nextcalc <= now:
+                self.nextcalc = now + timedelta(minutes=self.calculate_period)
                 self.forced = False
                 self.endheat = now
                 Domoticz.Debug("Switching heat Off !")
@@ -447,16 +450,17 @@ class BasePlugin:
         command = "On" if switch else "Off"
         Domoticz.Debug("Heating '{}'".format(command))
         for idx in self.Heaters:
-            if switches[idx] != switch:  # check if action needed
-                DomoticzAPI("type=command&param=switchlight&idx={}&switchcmd={}".format(idx, command))
+            #mark: action alwayse needed if command lost
+            #if switches[idx] != switch:  # check if action needed
+            DomoticzAPI("type=command&param=switchlight&idx={}&switchcmd={}".format(idx, command))
         if switch:
             Domoticz.Debug("End Heat time = " + str(self.endheat))
 
 
     def readTemps(self):
-
         # set update flag for next temp update
-        self.nexttemps = datetime.now() + timedelta(minutes=5)
+        #mark: minutes 5->1
+        self.nexttemps = datetime.now() + timedelta(minutes=1)
 
         # fetch all the devices from the API and scan for sensors
         noerror = True
